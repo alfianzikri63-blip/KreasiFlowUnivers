@@ -48,8 +48,16 @@ jobs:
           assert (root / 'settings.gradle').is_file()
           assert (root / 'app/build.gradle').is_file()
           PY
+      - name: Setup Android SDK command-line tools
+        uses: android-actions/setup-android@v4
       - name: Android SDK
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+        run: |
+          set -euo pipefail
+          command -v sdkmanager
+          sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
+          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/zipalign"
       - name: Compile and lint release
         working-directory: android-source
         env:
