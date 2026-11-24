@@ -1,0 +1,103 @@
+name: Build and Release KreasiFlow Universal APK
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'KreasiFlow-Universal-Source.zip'
+      - '.github/workflows/release-apk-from-zip.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: kfu-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Extract trusted Android source
+        run: |
+          python - <<'PY'
+          import pathlib, stat, zipfile
+          root = pathlib.Path('android-source').resolve()
+          root.mkdir()
+          with zipfile.ZipFile('KreasiFlow-Universal-Source.zip') as z:
+              seen = set()
+              assert len(z.infolist()) <= 3000
+              assert sum(i.file_size for i in z.infolist()) <= 100 * 1024 * 1024
+              for i in z.infolist():
+                  p = pathlib.PurePosixPath(i.filename)
+                  assert not p.is_absolute() and '..' not in p.parts and '\\' not in i.filename
+                  assert not stat.S_ISLNK(i.external_attr >> 16)
+                  assert p not in seen
+                  seen.add(p)
+                  target = (root / p).resolve()
+                  assert target.is_relative_to(root)
+              z.extractall(root)
+          assert (root / 'settings.gradle').is_file()
+          assert (root / 'app/build.gradle').is_file()
+          PY
+      - name: Android SDK
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Compile and lint release
+        working-directory: android-source
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: gradle --no-daemon :app:assembleRelease :app:lintRelease
+      - name: Sign release APK
+        env:
+          KFU_KEYSTORE_B64: ${{ secrets.KFU_KEYSTORE_B64 }}
+          KFU_KEY_PASSWORD: ${{ secrets.KFU_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$KFU_KEYSTORE_B64" || -z "$KFU_KEY_PASSWORD" ]]; then
+            echo '::error::Tambahkan KFU_KEYSTORE_B64 dan KFU_KEY_PASSWORD di Actions secrets.'
+            exit 1
+          fi
+          umask 077
+          KEYFILE="$RUNNER_TEMP/kfu-signing.p12"
+          trap 'rm -f "$KEYFILE"' EXIT
+          printf '%s' "$KFU_KEYSTORE_B64" | base64 --decode > "$KEYFILE"
+          TOOLS="$ANDROID_HOME/build-tools/35.0.0"
+          mkdir -p release
+          "$TOOLS/zipalign" -p -f 4 android-source/app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/aligned.apk"
+          "$TOOLS/apksigner" sign --ks "$KEYFILE" --ks-type PKCS12 --ks-key-alias kreasiuniversal --ks-pass env:KFU_KEY_PASSWORD --key-pass env:KFU_KEY_PASSWORD --out "release/KreasiFlow-Universal-v1.0.0-build-${GITHUB_RUN_NUMBER}.apk" "$RUNNER_TEMP/aligned.apk"
+          "$TOOLS/apksigner" verify --verbose --print-certs release/*.apk
+          (cd release && sha256sum *.apk > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-release
+          path: release/
+          if-no-files-found: error
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: signed-release
+          path: release
+      - name: Publish signed APK to Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="v1.0.0-build-${GITHUB_RUN_NUMBER}"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" release/* --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" release/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "KreasiFlow Universal $TAG" --notes "Signed release APK. Core offline + manual cloud handoff. Build ${GITHUB_RUN_NUMBER}."
+          fi
