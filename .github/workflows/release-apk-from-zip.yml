@@ -80,7 +80,7 @@ jobs:
           TOOLS="$ANDROID_HOME/build-tools/35.0.0"
           mkdir -p release
           "$TOOLS/zipalign" -p -f 4 android-source/app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/aligned.apk"
-          "$TOOLS/apksigner" sign --ks "$KEYFILE" --ks-type PKCS12 --ks-key-alias kreasiuniversal --ks-pass env:KFU_KEY_PASSWORD --key-pass env:KFU_KEY_PASSWORD --out "release/KreasiFlow-Universal-v2.3.0-build-${GITHUB_RUN_NUMBER}.apk" "$RUNNER_TEMP/aligned.apk"
+          "$TOOLS/apksigner" sign --ks "$KEYFILE" --ks-type PKCS12 --ks-key-alias kreasiuniversal --ks-pass env:KFU_KEY_PASSWORD --key-pass env:KFU_KEY_PASSWORD --out "release/KreasiFlow-Universal-v2.4.4-build-${GITHUB_RUN_NUMBER}.apk" "$RUNNER_TEMP/aligned.apk"
           "$TOOLS/apksigner" verify --verbose --print-certs release/*.apk
           (cd release && sha256sum *.apk > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
@@ -103,9 +103,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG="v2.3.0-build-${GITHUB_RUN_NUMBER}"
+          TAG="v2.4.4-build-${GITHUB_RUN_NUMBER}"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" release/* --clobber --repo "$GITHUB_REPOSITORY"
           else
-            gh release create "$TAG" release/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "KreasiFlow Universal $TAG" --notes "Signed release APK. One Click draft production beta; review required. Build ${GITHUB_RUN_NUMBER}."
+            gh release create "$TAG" release/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "KreasiFlow Universal $TAG" --notes "Signed release APK. Premium Studio UI; Motion Engine beta and Auto Repair retained; review required. Build ${GITHUB_RUN_NUMBER}."
           fi
