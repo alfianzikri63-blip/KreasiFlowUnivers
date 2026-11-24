@@ -1,0 +1,20 @@
+KREASIFLOW UNIVERSAL AI — CORE V1.0
+Paket ini adalah ZIP luar. Ekstrak ZIP LUAR saja. ZIP source di dalamnya JANGAN diekstrak saat upload.
+
+PERSIAPAN SEKALI (Chrome mode desktop jika perlu)
+1. Buat repository PRIVATE bernama KreasiFlowUniversal dengan README, default branch main. Jangan gunakan repo BedahKlasik untuk aplikasi ini.
+2. Siapkan dua GitHub Actions repository secrets sebelum memasang workflow: KFU_KEYSTORE_B64 dan KFU_KEY_PASSWORD. Gunakan paket signing privat yang diberikan TERPISAH atau signing key PKCS12 sendiri (alias kreasiuniversal). Jangan upload paket signing atau file kuncinya.
+3. Upload KreasiFlow-Universal-Source.zip ke root repo. Jangan upload ZIP luar atau folder source yang diekstrak.
+4. Buat file .github/workflows/release-apk-from-zip.yml dengan Add file > Create new file. Ketik seluruh path pada nama file, salin isi file YML dari paket ini, commit ke main. Upload langsung ke lokasi itu juga bisa jika browser mendukung. Workflow akan mulai otomatis pada commit yang menambahkannya.
+5. Buka Actions > Build and Release KreasiFlow Universal APK. Jika sukses, buka Releases dan unduh APK. Jika gagal, cek step merah dan kirim log. Jika Actions disabled, aktifkan lewat tab Actions. Job publish memerlukan izin contents:write, yang ditetapkan di workflow; kebijakan repo/org bisa membatasi.
+6. Instal APK pada HP; izinkan pemasangan dari sumber ini bila Android meminta. Verifikasi SHA256SUMS.txt bila mampu.
+
+UPDATE SELANJUTNYA
+Ganti file KreasiFlow-Universal-Source.zip di root main dengan ZIP source versi baru. Commit. Workflow berjalan otomatis, versionCode memakai run_number, tag v1.0.0-build-N. Untuk perubahan versi mayor/minor, ubah versionName dan tag pada paket berikutnya; jangan ganti applicationId atau signing key. Jangan gunakan ulang nomor run untuk versi baru.
+
+ISI V1.0
+- UI Android native dark, tanpa runtime WebView atau API key.
+- Empat profil skill, import ZIP/SKILL.md sebagai data, checksum dan batas ukuran; tidak mengeksekusi kode impor.
+- Project lokal, stage editor, approval manual, autosave, duplikasi, hapus, salin prompt, buka ChatGPT/Codex di browser, catat link/status run manual, import/play/export MP4, backup/restore metadata JSON.
+- Paket skill asli tidak dibundel ke APK: impor dari file yang sudah Anda punya. Backup metadata bukan backup paket atau video. Periksa lisensi sebelum distribusi.
+- Belum ada backend, otomatisasi AI, polling/dispatch Actions dari APK, maupun mesin render di HP. Modul selain Bedah Klasik masih perlu adapter. Status Bedah Klasik belum terverifikasi. Tidak ada klaim bahwa APK sudah berhasil build: Android SDK/Gradle tidak tersedia di lingkungan pembuatan paket, jadi build/lint pertama dilakukan di GitHub Actions.
