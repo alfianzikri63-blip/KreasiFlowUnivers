@@ -48,8 +48,14 @@ jobs:
           assert (root / 'settings.gradle').is_file()
           assert (root / 'app/build.gradle').is_file()
           PY
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
       - name: Android SDK
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+        run: |
+          sdkmanager --version
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+          
       - name: Compile and lint release
         working-directory: android-source
         env:
